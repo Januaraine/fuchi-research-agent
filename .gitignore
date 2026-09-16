@@ -1,1 +1,18 @@
+# 临时目录 / 依赖产物（不入库）
 .tmp-gsap-ref/
+
+# backend
+backend/.deps/
+backend/.venv/
+backend/pip-tmp/
+backend/knowledge.db
+backend/**/__pycache__/
+*.pyc
+
+# frontend
+frontend/node_modules/
+frontend/.next/
+
+# misc
+.DS_Store
+Thumbs.db
