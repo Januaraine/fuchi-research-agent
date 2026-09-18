@@ -482,6 +482,82 @@ h3 {
   .live-grid {
     grid-template-columns: 1fr;
   }
+  .compare-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* semantic search */
+.semantic-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.semantic-row input {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: var(--display);
+  font-size: 14px;
+  outline: none;
+}
+
+.semantic-row input:focus {
+  border-color: var(--jade);
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.hit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hit-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.hit-item:hover {
+  background: var(--bg-elev-2);
+  border-color: var(--border);
+}
+
+.hit-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.hit-cat {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.hit-score {
+  flex: 0 0 auto;
+  width: 44px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
 }
 
 /* live badge */

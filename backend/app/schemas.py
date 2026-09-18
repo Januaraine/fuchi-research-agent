@@ -108,3 +108,34 @@ class IngestionRunOut(BaseModel):
     message: Optional[str] = None
     started_at: datetime
     finished_at: Optional[datetime] = None
+
+
+class SemanticHit(BaseModel):
+    id: str
+    name: str
+    category: str
+    score: float
+
+
+class SemanticSearchOut(BaseModel):
+    query: str
+    hits: list[SemanticHit] = []
+
+
+class SemanticCompareOut(BaseModel):
+    query: str
+    keyword: list[SemanticHit] = []
+    semantic: list[SemanticHit] = []
+
+
+class SemanticBuildOut(BaseModel):
+    built: int
+    model: str
+    vocab_size: int
+    status: str
+
+
+class RecommendOut(BaseModel):
+    node_id: str
+    node_name: str
+    recommendations: list[SemanticHit] = []

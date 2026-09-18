@@ -3,6 +3,10 @@ import type {
   NodeDetail,
   NodeSummary,
   RagResult,
+  RecommendOut,
+  SemanticBuildOut,
+  SemanticCompareOut,
+  SemanticSearchOut,
   Stats,
 } from "./types";
 
@@ -54,4 +58,17 @@ export const api = {
     get<NodeSummary[]>(`/api/search?q=${encodeURIComponent(q)}`),
   ragQuery: (question: string) =>
     post<RagResult>("/api/rag/query", { question }),
+  semanticSearch: (q: string, limit?: number) =>
+    get<SemanticSearchOut>(
+      `/api/semantic/search?q=${encodeURIComponent(q)}${limit ? `&limit=${limit}` : ""}`
+    ),
+  semanticCompare: (q: string, limit?: number) =>
+    get<SemanticCompareOut>(
+      `/api/semantic/compare?q=${encodeURIComponent(q)}${limit ? `&limit=${limit}` : ""}`
+    ),
+  semanticRecommend: (id: string, limit?: number) =>
+    get<RecommendOut>(
+      `/api/semantic/recommend/${encodeURIComponent(id)}${limit ? `?limit=${limit}` : ""}`
+    ),
+  buildEmbeddings: () => post<SemanticBuildOut>("/api/semantic/build", {}),
 };

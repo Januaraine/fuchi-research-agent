@@ -76,3 +76,34 @@ export interface TrendingItem {
   category: string;
   popularity: number;
 }
+
+export interface SemanticHit {
+  id: string;
+  name: string;
+  category: string;
+  score: number;
+}
+
+export interface SemanticSearchOut {
+  query: string;
+  hits: SemanticHit[];
+}
+
+export interface SemanticCompareOut {
+  query: string;
+  keyword: SemanticHit[];
+  semantic: SemanticHit[];
+}
+
+export interface SemanticBuildOut {
+  built: number;
+  model: string;
+  vocab_size: number;
+  status: string;
+}
+
+export interface RecommendOut {
+  node_id: string;
+  node_name: string;
+  recommendations: SemanticHit[];
+}

@@ -54,3 +54,28 @@ class IngestionRun(Base):
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class NodeEmbedding(Base):
+    """知识节点向量（Phase 5）：TF-IDF n-gram 向量，L2 归一化后持久化。"""
+
+    __tablename__ = "node_embeddings"
+
+    node_id: Mapped[str] = mapped_column(
+        ForeignKey("knowledge_nodes.id"), primary_key=True
+    )
+    model: Mapped[str] = mapped_column(String)  # 例如 "tfidf-ngram-v1"
+    vector_json: Mapped[str] = mapped_column(Text)  # {"token": weight, ...}
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class SemanticIndexMeta(Base):
+    """语义索引元信息：记录模型版本、词表 IDF 与构建规模（用于判重/重建）。"""
+
+    __tablename__ = "semantic_index_meta"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    model: Mapped[str] = mapped_column(String)
+    num_nodes: Mapped[int] = mapped_column(Integer, default=0)
+    idf_json: Mapped[str] = mapped_column(Text)  # {"token": idf, ...}
+    built_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

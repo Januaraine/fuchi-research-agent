@@ -9,6 +9,7 @@ import NodeCard from "@/components/NodeCard";
 import StatCard from "@/components/StatCard";
 import ActivityFeed from "@/components/ActivityFeed";
 import TrendingPanel from "@/components/TrendingPanel";
+import SemanticSearch from "@/components/SemanticSearch";
 import type { NodeSummary, RagResult, Stats } from "@/lib/types";
 
 export default function Dashboard() {
@@ -179,6 +180,16 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </section>
+
+      <section className="section">
+        <h2>
+          <span className="id">05</span>语义搜索{" "}
+          <span className="muted" style={{ fontSize: 12, fontFamily: "var(--mono)" }}>
+            （Embedding · 向量检索）
+          </span>
+        </h2>
+        <SemanticSearch />
       </section>
     </div>
   );

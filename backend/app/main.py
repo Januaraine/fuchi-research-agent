@@ -6,8 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import CORS_ORIGINS
 from .database import Base, SessionLocal, engine
-from .routers import graph, ingest, nodes, rag, realtime, search, stats
+from .routers import graph, ingest, nodes, rag, realtime, search, semantic, stats
 from .seed import seed_db
+from .services import embedding_service
 from .services.realtime import realtime_loop
 
 
@@ -16,6 +17,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
         seed_db(db)
+        embedding_service.ensure_embeddings(db)
     loop_task = asyncio.create_task(realtime_loop())
     yield
     loop_task.cancel()
@@ -47,6 +49,7 @@ app.include_router(search.router)
 app.include_router(rag.router)
 app.include_router(realtime.router)
 app.include_router(ingest.router)
+app.include_router(semantic.router)
 
 
 @app.get("/")
@@ -65,6 +68,9 @@ def root():
             "/api/realtime/history",
             "/api/ingest/wikipedia",
             "/api/ingest/runs",
+            "/api/semantic/search",
+            "/api/semantic/compare",
+            "/api/semantic/recommend/{node_id}",
             "WS /api/ws",
         ],
     }

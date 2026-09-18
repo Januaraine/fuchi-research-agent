@@ -2,7 +2,7 @@
 
 > 一个以 **OC 世界观为视觉与叙事外壳**、以 **真实世界知识为核心数据** 的未来文明知识观测与交互系统。
 
-本项目当前完成 **Phase 0（项目基础）+ Phase 1（Seed Data）+ Phase 2（知识图谱）+ Phase 3（实时系统）+ Phase 4（真实数据接入）**，并附带 RAG 查询层接口（暂未接入 LLM）。
+本项目当前完成 **Phase 0（项目基础）+ Phase 1（Seed Data）+ Phase 2（知识图谱）+ Phase 3（实时系统）+ Phase 4（真实数据接入）+ Phase 5（语义搜索）**，并附带 RAG 查询层接口（暂未接入 LLM）。
 
 ---
 
@@ -17,6 +17,7 @@ Backend (FastAPI)
         ▼
 SQLite (SQLAlchemy)  ← 119 个真实 AI/ML 知识节点 · 235 条关系（Seed）
                      ← 可经 Wikipedia ingestion pipeline 持续扩充
+                     ← 节点向量（TF-IDF n-gram）支撑语义检索 / 相似度推荐
 ```
 
 - 前端：`frontend/`（Next.js App Router + TypeScript，OC「未来文明观测站」暗色主题）
@@ -35,14 +36,15 @@ backend/
     seed_data.py       # Seed Data（119 节点 / 235 关系）
     seed.py            # 数据导入（幂等：库非空则跳过）
     ingest/            # 数据接入 pipeline（wikipedia 适配器 + 去重/实体链接 + CLI）
-    routers/           # nodes / graph / search / stats / rag / realtime / ingest
-    services/rag_service.py   # RAG 查询层接口（检索已实现，LLM 留待 Phase 5/6）
+    routers/           # nodes / graph / search / stats / rag / realtime / ingest / semantic
+    services/rag_service.py   # RAG 查询层接口（检索已实现，LLM 留待 Phase 6）
     services/realtime.py      # WebSocket 连接管理 + 后台事件循环（模拟系统动态）
+    services/embedding_service.py  # TF-IDF n-gram 向量化 + 余弦检索 + 相似度推荐
   requirements.txt
 frontend/
   app/                 # page.tsx(Dashboard) · graph/page.tsx · nodes/[id]/page.tsx
   components/          # Navbar · GraphCanvas(力导向图) · NodeCard · RelationList · StatCard
-                       # ActivityFeed(实时活动流) · TrendingPanel(实时趋势榜)
+                       # ActivityFeed(实时活动流) · TrendingPanel(实时趋势榜) · SemanticSearch(语义搜索对比)
   lib/                 # api.ts · types.ts · colors.ts · useRealtime.ts(WS 自动重连 hook)
 ```
 
@@ -96,6 +98,10 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 | GET | `/api/realtime/history` | 最近实时事件（REST 兜底） |
 | POST | `/api/ingest/wikipedia` | 触发一轮 Wikipedia 数据接入（body：`{"titles": [...], "max_relations": 20}`） |
 | GET | `/api/ingest/runs` | 最近的 ingestion 运行记录 |
+| POST | `/api/semantic/build` | 重建全部节点向量（TF-IDF n-gram，幂等） |
+| GET | `/api/semantic/search?q=&limit=` | 语义检索（向量余弦相似度） |
+| GET | `/api/semantic/recommend/{node_id}` | 语义相似度知识推荐 |
+| GET | `/api/semantic/compare?q=` | 关键词检索 vs 语义检索 对比 |
 | WS | `/api/ws` | 实时事件通道（发送 `ping` 回 `pong` 心跳） |
 
 ## 数据模型
@@ -106,6 +112,10 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 
 `IngestionRun`：`source · status · fetched · inserted · updated · skipped · relations_created · started_at · finished_at`
 
+`NodeEmbedding`：`node_id · model · vector_json`（L2 归一化的 TF-IDF n-gram 向量）
+
+`SemanticIndexMeta`：`model · num_nodes · idf_json`（词表 IDF 与索引规模，用于判重/重建）
+
 分类：`field / paradigm / algorithm / model / architecture / technique / concept / task / dataset / application`
 
 ## 开发阶段进度
@@ -115,7 +125,7 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 - [x] **Phase 2** — Knowledge Graph（力导向图可视化 · 搜索定位 · 节点详情 · 相关知识 · 图导航：聚焦 / 展开邻居 / 关系筛选 / 重置全图）
 - [x] **Phase 3** — Real-time System（WebSocket 事件流 · 实时 Activity Feed · 实时趋势榜 · 图节点实时活动光环 · 自动重连）
 - [x] **Phase 4** — Real Data Integration（Wikipedia ingestion pipeline：拉取 → 清洗 → 去重 → 实体链接 → 关系抽取 → 幂等写入 + 运行记录，CLI 与 REST 均可触发）
-- [ ] Phase 5 — 语义搜索（Embedding + 向量库）
+- [x] **Phase 5** — Semantic Search（TF-IDF n-gram Embedding 持久化 · 向量余弦检索 · 语义推荐 · 关键词 vs 语义对比）
 - [ ] Phase 6 — RAG（接入 LLM，生成 grounded answer）
 - [ ] Phase 7 — Agent（Tool Calling / 多步推理）
 
@@ -184,6 +194,35 @@ curl -X POST http://127.0.0.1:8000/api/ingest/wikipedia \
 > 已知边界：去重基于 slug/名称的精确对齐，不解决跨别名实体消歧（例如 Wikipedia 的
 > `Long short-term memory` 与 seed 里的缩写 `LSTM` 会被视为两个节点）。深度实体解析
 > 属于后续阶段的实体链接增强，本阶段用「标题→slug + 名称」的对齐已满足基本去重要求。
+
+---
+
+## 关于语义搜索（Phase 5）
+
+`backend/app/services/embedding_service.py` 实现了轻量、无外部依赖的 Embedding + 向量检索：
+
+```text
+KnowledgeNode (name + description + category)
+        ↓ 词 + 字符 3-gram 分词
+TF-IDF 加权 → L2 归一化向量 → 持久化 node_embeddings
+        ↓ 查询同样向量化
+余弦相似度（归一化后即点积）→ 语义检索 / 相似度推荐
+```
+
+- **无外部 LLM / 向量库**：纯标准库即可跑通「生成 Embedding → 持久化 → 向量检索 → 推荐」全链路，符合「不堆技术」原则；向量化与检索解耦，Phase 6/7 可无缝替换为神经 embedding / 向量库。
+- **索引自动维护**：启动时 `ensure_embeddings` 在节点数 / 模型版本变化时自动重建；`POST /api/semantic/build` 可手动强制重建。
+- **关键词 vs 语义对比**：`GET /api/semantic/compare?q=` 同时返回字面匹配与向量相似度结果，前端 Dashboard「语义搜索」区块并排展示。
+
+实测示例（自然语言查询不含目标节点名称）：
+
+| 查询 | 关键词检索 | 语义检索 Top1 |
+|---|---|---|
+| *machines that understand images and video* | （空） | **Computer Vision** (0.58) |
+| *translating text from one language to another* | （空） | **Machine Translation** (0.79) |
+
+`GET /api/semantic/recommend/{node_id}` 用同一向量空间做「相似知识推荐」，节点详情页 `SIM` 区块展示。
+
+> 说明：本阶段 Embedding 为 **TF-IDF n-gram**（词面 + 局部字符共现），能捕获近义/同主题的词汇重叠，但不等同于预训练句向量（Sentence-BERT 等）。真正的深度语义相似在 Phase 6/7 接入神经模型时替换向量化实现即可，接口不变。
 
 ---
 
