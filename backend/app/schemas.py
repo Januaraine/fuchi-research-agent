@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -74,3 +75,36 @@ class RagQueryOut(BaseModel):
     answer: Optional[str] = None
     retrieved: list[RagSource] = []
     context: Optional[str] = None
+
+
+class IngestWikipediaIn(BaseModel):
+    titles: list[str]
+    max_relations: int = 20  # 每个页面最多建立的实体链接关系数
+
+
+class IngestResult(BaseModel):
+    run_id: int
+    source: str
+    status: str
+    fetched: int
+    inserted: int
+    updated: int
+    skipped: int
+    relations_created: int
+    message: str
+
+
+class IngestionRunOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    source: str
+    status: str
+    fetched: int
+    inserted: int
+    updated: int
+    skipped: int
+    relations_created: int
+    message: Optional[str] = None
+    started_at: datetime
+    finished_at: Optional[datetime] = None

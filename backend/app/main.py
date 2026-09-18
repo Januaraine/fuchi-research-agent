@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import CORS_ORIGINS
 from .database import Base, SessionLocal, engine
-from .routers import graph, nodes, rag, realtime, search, stats
+from .routers import graph, ingest, nodes, rag, realtime, search, stats
 from .seed import seed_db
 from .services.realtime import realtime_loop
 
@@ -46,6 +46,7 @@ app.include_router(graph.router)
 app.include_router(search.router)
 app.include_router(rag.router)
 app.include_router(realtime.router)
+app.include_router(ingest.router)
 
 
 @app.get("/")
@@ -62,6 +63,8 @@ def root():
             "/api/search",
             "/api/rag/query",
             "/api/realtime/history",
+            "/api/ingest/wikipedia",
+            "/api/ingest/runs",
             "WS /api/ws",
         ],
     }
