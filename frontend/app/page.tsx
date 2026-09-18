@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useRealtime } from "@/lib/useRealtime";
 import { CATEGORY_COLORS, CATEGORY_LABELS, FALLBACK_COLOR } from "@/lib/colors";
 import NodeCard from "@/components/NodeCard";
 import StatCard from "@/components/StatCard";
+import ActivityFeed from "@/components/ActivityFeed";
+import TrendingPanel from "@/components/TrendingPanel";
 import type { NodeSummary, RagResult, Stats } from "@/lib/types";
 
 export default function Dashboard() {
@@ -16,6 +19,8 @@ export default function Dashboard() {
   const [question, setQuestion] = useState("");
   const [rag, setRag] = useState<RagResult | null>(null);
   const [ragBusy, setRagBusy] = useState(false);
+
+  const { connected, events, trending } = useRealtime(40);
 
   useEffect(() => {
     Promise.all([api.stats(), api.nodes({ category: "field" })])
@@ -87,7 +92,27 @@ export default function Dashboard() {
 
       <section className="section">
         <h2>
-          <span className="id">01</span>知识分类
+          <span className="id">01</span>实时观测{" "}
+          <span className={`live-badge ${connected ? "on" : "off"}`} style={{ marginLeft: 8 }}>
+            <span className="live-dot" />
+            {connected ? "LIVE" : "RECONNECTING"}
+          </span>
+        </h2>
+        <div className="live-grid">
+          <div className="panel">
+            <h3>Live Activity</h3>
+            <ActivityFeed events={events} empty="正在连接实时事件流…" />
+          </div>
+          <div className="panel">
+            <h3>Trending Knowledge</h3>
+            <TrendingPanel items={trending} />
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <h2>
+          <span className="id">02</span>知识分类
         </h2>
         <div className="chips">
           {stats &&
@@ -105,7 +130,7 @@ export default function Dashboard() {
 
       <section className="section">
         <h2>
-          <span className="id">02</span>核心领域
+          <span className="id">03</span>核心领域
         </h2>
         <div className="node-grid">
           {fields.map((n) => (
@@ -116,7 +141,7 @@ export default function Dashboard() {
 
       <section className="section">
         <h2>
-          <span className="id">03</span>AI Explorer{" "}
+          <span className="id">04</span>AI Explorer{" "}
           <span className="muted" style={{ fontSize: 12, fontFamily: "var(--mono)" }}>
             （RAG 接口 · 预览）
           </span>

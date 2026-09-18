@@ -63,3 +63,16 @@ export interface RagResult {
   retrieved: RagSource[];
   context: string | null;
 }
+
+export interface RealtimeEvent {
+  type: string;
+  ts: number;
+  data: Record<string, any>;
+}
+
+export interface TrendingItem {
+  id: string;
+  name: string;
+  category: string;
+  popularity: number;
+}

@@ -2,7 +2,7 @@
 
 > 一个以 **OC 世界观为视觉与叙事外壳**、以 **真实世界知识为核心数据** 的未来文明知识观测与交互系统。
 
-本项目当前完成 **Phase 0（项目基础）+ Phase 1（Seed Data）**，并附带基础知识图谱可视化与 RAG 查询层接口（暂未接入 LLM）。
+本项目当前完成 **Phase 0（项目基础）+ Phase 1（Seed Data）+ Phase 2（知识图谱）+ Phase 3（实时系统）**，并附带 RAG 查询层接口（暂未接入 LLM）。
 
 ---
 
@@ -10,7 +10,7 @@
 
 ```text
 Frontend (Next.js + TS)
-        │  REST (fetch)
+        │  REST (fetch) + WebSocket
         ▼
 Backend (FastAPI)
         │
@@ -32,13 +32,15 @@ backend/
     schemas.py         # Pydantic 响应模型
     seed_data.py       # Seed Data（119 节点 / 235 关系）
     seed.py            # 数据导入（幂等：库非空则跳过）
-    routers/           # nodes / graph / search / stats / rag
+    routers/           # nodes / graph / search / stats / rag / realtime
     services/rag_service.py   # RAG 查询层接口（检索已实现，LLM 留待 Phase 5/6）
+    services/realtime.py      # WebSocket 连接管理 + 后台事件循环（模拟系统动态）
   requirements.txt
 frontend/
   app/                 # page.tsx(Dashboard) · graph/page.tsx · nodes/[id]/page.tsx
   components/          # Navbar · GraphCanvas(力导向图) · NodeCard · RelationList · StatCard
-  lib/                 # api.ts · types.ts · colors.ts
+                       # ActivityFeed(实时活动流) · TrendingPanel(实时趋势榜)
+  lib/                 # api.ts · types.ts · colors.ts · useRealtime.ts(WS 自动重连 hook)
 ```
 
 ## 运行
@@ -85,8 +87,11 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 | GET | `/api/nodes` | 节点列表（`?category=` `?q=` `?limit=` `?offset=`） |
 | GET | `/api/nodes/{id}` | 节点详情（含出/入关系 + 相关节点） |
 | GET | `/api/graph` | 全图节点+边（`?node_id=&depth=` 返回邻域子图） |
+| GET | `/api/graph/neighbors/{node_id}` | 某节点 1 跳邻居子图（用于「展开邻居」） |
 | GET | `/api/search?q=` | 关键词搜索（名称/描述/分类） |
 | POST | `/api/rag/query` | RAG 查询（当前为检索层预览，`status=retrieval_ready_no_llm`） |
+| GET | `/api/realtime/history` | 最近实时事件（REST 兜底） |
+| WS | `/api/ws` | 实时事件通道（发送 `ping` 回 `pong` 心跳） |
 
 ## 数据模型
 
@@ -100,13 +105,29 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 
 - [x] **Phase 0** — 项目基础（前后端骨架、数据库、完整数据链路 `Frontend → Backend → DB`）
 - [x] **Phase 1** — Seed Data（119 真实节点 / 235 关系，可查询可持久化）
-- [x] 基础 Knowledge Graph 可视化 + 搜索 + 节点详情（Phase 2 的雏形）
-- [ ] Phase 2 — 完整图导航（聚焦 / 展开 / 关系筛选）
-- [ ] Phase 3 — 实时系统（WebSocket / SSE）
+- [x] **Phase 2** — Knowledge Graph（力导向图可视化 · 搜索定位 · 节点详情 · 相关知识 · 图导航：聚焦 / 展开邻居 / 关系筛选 / 重置全图）
+- [x] **Phase 3** — Real-time System（WebSocket 事件流 · 实时 Activity Feed · 实时趋势榜 · 图节点实时活动光环 · 自动重连）
 - [ ] Phase 4 — 真实数据源接入（Wikipedia/Wikidata 等 ingestion pipeline）
 - [ ] Phase 5 — 语义搜索（Embedding + 向量库）
 - [ ] Phase 6 — RAG（接入 LLM，生成 grounded answer）
 - [ ] Phase 7 — Agent（Tool Calling / 多步推理）
+
+## 关于实时系统（Phase 3）
+
+`backend/app/services/realtime.py` 在启动时挂起一个后台事件循环，通过 `WS /api/ws` 广播事件：
+
+| 事件类型 | 含义 | 数据是否真实 |
+|---|---|---|
+| `node_activity` | 随机知识节点活跃度 +Δ（**真实写入 popularity**） | 真实状态变化 |
+| `user_activity` | 模拟用户 探索/搜索/打开 某个真实节点 | 模拟系统动态 |
+| `trending_update` | 按 popularity 实时重算趋势榜 | 由真实数据计算 |
+| `system_status` | 偶发的系统状态播报 | 模拟系统动态 |
+
+> 遵循「Mock Data 只用于动态系统」原则：实时层模拟的是**系统运行状态**（用户活动 / 访问量 / 趋势 / 系统事件），事件指向的都是 seed_data 里的真实知识节点，不伪造知识本身。
+
+前端 `lib/useRealtime.ts` 负责连接、心跳与自动重连（指数退避）；Dashboard 的 Live Activity + Trending、Graph 页的节点「呼吸光环」都由该事件流驱动，全程无需刷新页面。
+
+---
 
 ## 关于 RAG 接口（留接口阶段）
 

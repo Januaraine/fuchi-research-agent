@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORY_COLORS, FALLBACK_COLOR } from "@/lib/colors";
 import type { GraphData } from "@/lib/types";
 
@@ -8,6 +8,8 @@ interface Props {
   data: GraphData;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  hiddenTypes?: string[];
+  activeIds?: string[];
 }
 
 const W = 920;
@@ -18,10 +20,21 @@ interface Pos {
   y: number;
 }
 
-export default function GraphCanvas({ data, selectedId, onSelect }: Props) {
+export default function GraphCanvas({
+  data,
+  selectedId,
+  onSelect,
+  hiddenTypes = [],
+  activeIds = [],
+}: Props) {
+  const positionsRef = useRef<Record<string, Pos>>({});
   const [positions, setPositions] = useState<Record<string, Pos>>({});
   const [loading, setLoading] = useState(true);
 
+  const hiddenSet = useMemo(() => new Set(hiddenTypes), [hiddenTypes]);
+  const activeSet = useMemo(() => new Set(activeIds), [activeIds]);
+
+  // 节点尺寸依据「全部边」的度计算，保持稳定（筛选关系时不跳动）。
   const degree = useMemo(() => {
     const d: Record<string, number> = {};
     data.nodes.forEach((n) => (d[n.id] = 0));
@@ -32,20 +45,38 @@ export default function GraphCanvas({ data, selectedId, onSelect }: Props) {
     return d;
   }, [data]);
 
+  const visibleEdges = useMemo(
+    () => data.edges.filter((e) => !hiddenSet.has(e.relation_type)),
+    [data, hiddenSet]
+  );
+
   useEffect(() => {
     setLoading(true);
     const ids = data.nodes.map((n) => n.id);
+    const prev = positionsRef.current;
     const pos: Record<string, Pos> = {};
+
+    // 已存在节点沿用旧坐标；新节点围绕已知节点质心初始化。
+    const known = ids.filter((id) => prev[id]);
+    let cx = W / 2;
+    let cy = H / 2;
+    if (known.length) {
+      cx = known.reduce((s, id) => s + prev[id].x, 0) / known.length;
+      cy = known.reduce((s, id) => s + prev[id].y, 0) / known.length;
+    }
     ids.forEach((id) => {
-      pos[id] = {
-        x: W / 2 + (Math.random() - 0.5) * 520,
-        y: H / 2 + (Math.random() - 0.5) * 520,
-      };
+      if (prev[id]) {
+        pos[id] = { ...prev[id] };
+      } else {
+        pos[id] = {
+          x: cx + (Math.random() - 0.5) * 200,
+          y: cy + (Math.random() - 0.5) * 200,
+        };
+      }
     });
 
     const ITER = 320;
     for (let it = 0; it < ITER; it++) {
-      // repulsion (O(n^2))
       for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
           const a = pos[ids[i]];
@@ -63,7 +94,6 @@ export default function GraphCanvas({ data, selectedId, onSelect }: Props) {
           b.y -= fy;
         }
       }
-      // springs
       for (const e of data.edges) {
         const a = pos[e.source];
         const b = pos[e.target];
@@ -79,7 +109,6 @@ export default function GraphCanvas({ data, selectedId, onSelect }: Props) {
         b.x -= fx;
         b.y -= fy;
       }
-      // gravity + clamp
       for (const id of ids) {
         const p = pos[id];
         p.x += (W / 2 - p.x) * 0.03;
@@ -88,6 +117,7 @@ export default function GraphCanvas({ data, selectedId, onSelect }: Props) {
         p.y = Math.max(24, Math.min(H - 24, p.y));
       }
     }
+    positionsRef.current = pos;
     setPositions(pos);
     setLoading(false);
   }, [data]);
@@ -120,7 +150,7 @@ export default function GraphCanvas({ data, selectedId, onSelect }: Props) {
             onClick={() => onSelect(null)}
             style={{ cursor: "default" }}
           />
-          {data.edges.map((e, i) => {
+          {visibleEdges.map((e, i) => {
             const a = positions[e.source];
             const b = positions[e.target];
             if (!a || !b) return null;
@@ -145,6 +175,7 @@ export default function GraphCanvas({ data, selectedId, onSelect }: Props) {
             const color = CATEGORY_COLORS[n.category] ?? FALLBACK_COLOR;
             const isSelected = n.id === selectedId;
             const isNeighbor = neighborIds.has(n.id);
+            const isActive = activeSet.has(n.id);
             const dim = hasSelection && !isSelected && !isNeighbor;
             const r = 4 + Math.min(10, Math.sqrt(degree[n.id] ?? 0) * 1.7);
             const showLabel = isSelected || isNeighbor || (degree[n.id] ?? 0) >= 7;
@@ -156,6 +187,29 @@ export default function GraphCanvas({ data, selectedId, onSelect }: Props) {
                 opacity={dim ? 0.22 : 1}
               >
                 <title>{n.name}</title>
+                {isActive && (
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={r + 4}
+                    fill="none"
+                    stroke="#7fb2a5"
+                    strokeWidth={1.5}
+                  >
+                    <animate
+                      attributeName="r"
+                      values={`${r + 3};${r + 14}`}
+                      dur="1.4s"
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      values="0.8;0"
+                      dur="1.4s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                )}
                 <circle
                   cx={p.x}
                   cy={p.y}

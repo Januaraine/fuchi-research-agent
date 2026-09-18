@@ -12,6 +12,7 @@ backend/**/__pycache__/
 # frontend
 frontend/node_modules/
 frontend/.next/
+frontend/tsconfig.tsbuildinfo
 
 # misc
 .DS_Store

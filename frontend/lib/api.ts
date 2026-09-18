@@ -9,6 +9,9 @@ import type {
 const BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
+export const WS_URL =
+  (process.env.NEXT_PUBLIC_WS_BASE ?? BASE.replace(/^http/, "ws")) + "/api/ws";
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
@@ -38,8 +41,15 @@ export const api = {
     return get<NodeSummary[]>(`/api/nodes${qs ? `?${qs}` : ""}`);
   },
   node: (id: string) => get<NodeDetail>(`/api/nodes/${encodeURIComponent(id)}`),
-  graph: (nodeId?: string) =>
-    get<GraphData>(`/api/graph${nodeId ? `?node_id=${encodeURIComponent(nodeId)}` : ""}`),
+  graph: (nodeId?: string, depth?: number) => {
+    const p = new URLSearchParams();
+    if (nodeId) p.set("node_id", nodeId);
+    if (depth != null) p.set("depth", String(depth));
+    const qs = p.toString();
+    return get<GraphData>(`/api/graph${qs ? `?${qs}` : ""}`);
+  },
+  neighbors: (nodeId: string) =>
+    get<GraphData>(`/api/graph/neighbors/${encodeURIComponent(nodeId)}`),
   search: (q: string) =>
     get<NodeSummary[]>(`/api/search?q=${encodeURIComponent(q)}`),
   ragQuery: (question: string) =>
