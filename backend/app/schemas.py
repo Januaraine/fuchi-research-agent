@@ -66,11 +66,12 @@ class RagSource(BaseModel):
     name: str
     category: str
     score: float
+    source_url: Optional[str] = None
 
 
 class RagQueryOut(BaseModel):
     question: str
-    status: str  # "retrieval_ready_no_llm" | "not_implemented"
+    status: str  # "grounded" | "no_context" | "retrieval_ready_no_llm" | "error"
     message: str
     answer: Optional[str] = None
     retrieved: list[RagSource] = []

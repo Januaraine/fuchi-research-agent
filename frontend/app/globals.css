@@ -472,6 +472,77 @@ h3 {
   line-height: 1.6;
 }
 
+/* rag answer */
+.rag-status {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.rag-status[data-status="grounded"] {
+  color: var(--jade);
+  border-color: rgba(127, 178, 165, 0.5);
+}
+
+.rag-status[data-status="no_context"],
+.rag-status[data-status="error"] {
+  color: var(--cinnabar);
+  border-color: rgba(200, 85, 61, 0.5);
+}
+
+.rag-answer {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--fg);
+  white-space: pre-wrap;
+}
+
+.rag-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rag-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.rag-source-idx {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--jade);
+}
+
+.rag-source-name {
+  font-weight: 500;
+}
+
+.rag-source-name:hover {
+  color: var(--jade);
+}
+
 @media (max-width: 860px) {
   .graph-layout {
     grid-template-columns: 1fr;

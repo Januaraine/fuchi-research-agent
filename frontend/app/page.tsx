@@ -144,14 +144,14 @@ export default function Dashboard() {
         <h2>
           <span className="id">04</span>AI Explorer{" "}
           <span className="muted" style={{ fontSize: 12, fontFamily: "var(--mono)" }}>
-            （RAG 接口 · 预览）
+            （RAG · 检索增强）
           </span>
         </h2>
         <div className="panel explorer-box">
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="例如：ResNet 和计算机视觉有什么关系？"
+            placeholder="例如：ResNet 和 Transformer 在计算机视觉中的关系是什么？"
           />
           <div style={{ marginTop: 10 }}>
             <button className="btn" onClick={ask} disabled={ragBusy}>
@@ -159,24 +159,54 @@ export default function Dashboard() {
             </button>
           </div>
           {rag && (
-            <div className="note">
-              <div>状态：{rag.status}</div>
+            <div style={{ marginTop: 14 }}>
+              <div className="rag-status" data-status={rag.status}>
+                {rag.status === "grounded"
+                  ? "已生成（可追溯来源）"
+                  : rag.status === "no_context"
+                  ? "未找到相关资料"
+                  : rag.status === "retrieval_ready_no_llm"
+                  ? "仅检索（LLM 未配置）"
+                  : rag.status === "error"
+                  ? "调用失败"
+                  : rag.status}
+              </div>
+
+              {rag.answer && (
+                <div className="rag-answer">{rag.answer}</div>
+              )}
+
               {rag.retrieved.length > 0 && (
-                <div style={{ marginTop: 6 }}>
-                  检索到的知识节点：
-                  {rag.retrieved.map((s) => (
-                    <Link
-                      key={s.id}
-                      href={`/nodes/${s.id}`}
-                      className="chip"
-                      style={{ margin: "3px 6px 0 0" }}
-                    >
-                      {s.name}
-                    </Link>
-                  ))}
+                <div style={{ marginTop: 12 }}>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+                    检索到的知识节点（来源）：
+                  </div>
+                  <div className="rag-sources">
+                    {rag.retrieved.map((s, i) => (
+                      <div key={s.id} className="rag-source">
+                        <span className="rag-source-idx">{i + 1}</span>
+                        <Link href={`/nodes/${s.id}`} className="rag-source-name">
+                          {s.name}
+                        </Link>
+                        {s.source_url && (
+                          <a
+                            href={s.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="source-link"
+                          >
+                            ↗
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              <div style={{ marginTop: 8 }}>{rag.message}</div>
+
+              <div className="note" style={{ marginTop: 10 }}>
+                {rag.message}
+              </div>
             </div>
           )}
         </div>

@@ -53,6 +53,7 @@ export interface RagSource {
   name: string;
   category: string;
   score: number;
+  source_url: string | null;
 }
 
 export interface RagResult {

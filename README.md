@@ -2,7 +2,7 @@
 
 > 一个以 **OC 世界观为视觉与叙事外壳**、以 **真实世界知识为核心数据** 的未来文明知识观测与交互系统。
 
-本项目当前完成 **Phase 0（项目基础）+ Phase 1（Seed Data）+ Phase 2（知识图谱）+ Phase 3（实时系统）+ Phase 4（真实数据接入）+ Phase 5（语义搜索）**，并附带 RAG 查询层接口（暂未接入 LLM）。
+本项目当前完成 **Phase 0（项目基础）+ Phase 1（Seed Data）+ Phase 2（知识图谱）+ Phase 3（实时系统）+ Phase 4（真实数据接入）+ Phase 5（语义搜索）+ Phase 6（RAG）**，LLM 采用 OpenAI 兼容接口（可选接入，未配置时优雅降级为仅检索）。
 
 ---
 
@@ -18,12 +18,16 @@ Backend (FastAPI)
 SQLite (SQLAlchemy)  ← 119 个真实 AI/ML 知识节点 · 235 条关系（Seed）
                      ← 可经 Wikipedia ingestion pipeline 持续扩充
                      ← 节点向量（TF-IDF n-gram）支撑语义检索 / 相似度推荐
+        │
+        ▼
+LLM（OpenAI 兼容接口，可选）→ RAG grounded answer（带来源引用）
 ```
 
 - 前端：`frontend/`（Next.js App Router + TypeScript，OC「未来文明观测站」暗色主题）
 - 后端：`backend/`（FastAPI + SQLAlchemy 2 + SQLite）
 - 数据：`backend/app/seed_data.py`（真实 AI/ML 知识，来源 Wikipedia / arXiv）
 - 数据接入：`backend/app/ingest/`（Wikipedia 拉取 → 清洗 → 去重 → 实体链接 → 关系抽取 → 幂等写入）
+- RAG / LLM：`backend/app/services/rag_service.py`（检索增强）+ `services/llm.py`（OpenAI 兼容客户端）
 
 ## 目录结构
 
@@ -37,7 +41,8 @@ backend/
     seed.py            # 数据导入（幂等：库非空则跳过）
     ingest/            # 数据接入 pipeline（wikipedia 适配器 + 去重/实体链接 + CLI）
     routers/           # nodes / graph / search / stats / rag / realtime / ingest / semantic
-    services/rag_service.py   # RAG 查询层接口（检索已实现，LLM 留待 Phase 6）
+    services/rag_service.py   # RAG 查询层（向量检索 + 关键词兜底 + grounded answer）
+    services/llm.py           # OpenAI 兼容 LLM 客户端（stdlib urllib，环境变量配置）
     services/realtime.py      # WebSocket 连接管理 + 后台事件循环（模拟系统动态）
     services/embedding_service.py  # TF-IDF n-gram 向量化 + 余弦检索 + 相似度推荐
   requirements.txt
@@ -68,6 +73,26 @@ uvicorn app.main:app --reload --port 8000
 
 > 说明：仓库里若存在 `backend/.deps/`，是开发时沙箱环境下的临时安装目录，正常本地开发请用上面的 `.venv` 方式，`.deps` 可安全删除（已被 `.gitignore` 忽略）。
 
+#### 可选：接入 LLM（RAG 生成回答）
+
+不配置也能正常启动，此时 `/api/rag/query` 只返回检索结果（`status=retrieval_ready_no_llm`）。
+配置以下环境变量即可接入任意 OpenAI 兼容服务：
+
+```bash
+# DeepSeek（推荐，与 Harness 同源）
+$env:LLM_API_BASE="https://api.deepseek.com"   # Windows PowerShell
+$env:LLM_API_KEY="sk-xxxx"
+$env:LLM_MODEL="deepseek-chat"
+
+# OpenAI
+# LLM_API_BASE=https://api.openai.com/v1   LLM_MODEL=gpt-4o-mini
+
+# 本地 Ollama（key 可留空）
+# LLM_API_BASE=http://localhost:11434/v1   LLM_MODEL=llama3
+```
+
+macOS / Linux 用 `export LLM_API_BASE=...` 代替 `$env:`。
+
 ### 2. 前端（端口 3000）
 
 ```bash
@@ -94,7 +119,7 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 | GET | `/api/graph` | 全图节点+边（`?node_id=&depth=` 返回邻域子图） |
 | GET | `/api/graph/neighbors/{node_id}` | 某节点 1 跳邻居子图（用于「展开邻居」） |
 | GET | `/api/search?q=` | 关键词搜索（名称/描述/分类） |
-| POST | `/api/rag/query` | RAG 查询（当前为检索层预览，`status=retrieval_ready_no_llm`） |
+| POST | `/api/rag/query` | RAG 查询（body：`{"question": "..."}`；返回 `answer` + `retrieved` 来源；`status=grounded/no_context/retrieval_ready_no_llm/error`） |
 | GET | `/api/realtime/history` | 最近实时事件（REST 兜底） |
 | POST | `/api/ingest/wikipedia` | 触发一轮 Wikipedia 数据接入（body：`{"titles": [...], "max_relations": 20}`） |
 | GET | `/api/ingest/runs` | 最近的 ingestion 运行记录 |
@@ -126,7 +151,7 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 - [x] **Phase 3** — Real-time System（WebSocket 事件流 · 实时 Activity Feed · 实时趋势榜 · 图节点实时活动光环 · 自动重连）
 - [x] **Phase 4** — Real Data Integration（Wikipedia ingestion pipeline：拉取 → 清洗 → 去重 → 实体链接 → 关系抽取 → 幂等写入 + 运行记录，CLI 与 REST 均可触发）
 - [x] **Phase 5** — Semantic Search（TF-IDF n-gram Embedding 持久化 · 向量余弦检索 · 语义推荐 · 关键词 vs 语义对比）
-- [ ] Phase 6 — RAG（接入 LLM，生成 grounded answer）
+- [x] **Phase 6** — RAG（向量检索 + grounded answer · 来源引用 · 无资料明确说明 · LLM 可选接入/优雅降级）
 - [ ] Phase 7 — Agent（Tool Calling / 多步推理）
 
 ## 关于实时系统（Phase 3）
@@ -226,13 +251,25 @@ TF-IDF 加权 → L2 归一化向量 → 持久化 node_embeddings
 
 ---
 
-## 关于 RAG 接口（留接口阶段）
+## 关于 RAG（Phase 6）
 
-`backend/app/services/rag_service.py` 已定义查询层接口：
+`backend/app/services/rag_service.py` 完成了检索增强问答全链路：
 
 ```text
-User Question → 检索(关键词匹配) → Retrieve Sources → [Phase 6: LLM] → Grounded Answer
+User Question
+     ↓
+向量检索（Phase 5）+ 关键词兜底（混合检索）
+     ↓
+Retrieve Sources（节点 + source_url）
+     ↓
+[LLM 已配置] 拼 grounded prompt → LLM → Grounded Answer（带 [n] 引用）
+[LLM 未配置] 返回检索结果（status=retrieval_ready_no_llm）
+[无相关资料] 明确说明（status=no_context，不强行生成）
 ```
 
-当前 `retrieve()` 使用关键词加权匹配（临时实现），`query()` 返回检索到的节点与上下文，
-`answer` 字段为 `None`。Phase 5 将替换为 embedding + 向量检索，Phase 6 接入 LLM。
+- **LLM 客户端**：`services/llm.py` 为 OpenAI 兼容封装（stdlib `urllib`），环境变量 `LLM_API_BASE / LLM_API_KEY / LLM_MODEL` 配置，一套代码支持 DeepSeek / OpenAI / Ollama。
+- **grounded prompt**：system prompt 要求「仅依据给定知识节点作答、资料不足就明说、用 `[n]` 标注引用」。
+- **来源可追溯**：返回 `answer` + `retrieved`（含 `source_url`），前端 AI Explorer 展示回答与带来源链接的引用列表。
+- **优雅降级**：未配置 LLM 时照常返回检索结果；调用失败返回 `status=error` 且不中断服务。
+
+`status` 取值：`grounded`（已生成）/ `no_context`（无相关资料）/ `retrieval_ready_no_llm`（已检索未生成）/ `error`（LLM 调用失败）。
