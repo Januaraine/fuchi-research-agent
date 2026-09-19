@@ -6,6 +6,7 @@ backend/.deps/
 backend/.venv/
 backend/pip-tmp/
 backend/knowledge.db
+backend/.tests_tmp/
 backend/**/__pycache__/
 *.pyc
 

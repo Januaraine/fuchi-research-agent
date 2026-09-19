@@ -117,6 +117,17 @@ npm run dev
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 ```
 
+## 测试
+
+后端自动化测试（stdlib `unittest`，零额外依赖）：
+
+```bash
+cd backend
+.venv\Scripts\python -m unittest discover -s tests -t . -v
+```
+
+完整测试报告见 [TESTING.md](TESTING.md)（43 个用例全部通过）。
+
 ## API
 
 | 方法 | 路径 | 说明 |
