@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import CORS_ORIGINS
 from .database import Base, SessionLocal, engine
-from .routers import graph, ingest, nodes, rag, realtime, search, semantic, stats
+from .routers import agent, graph, ingest, nodes, rag, realtime, search, semantic, stats
 from .seed import seed_db
 from .services import embedding_service
 from .services.realtime import realtime_loop
@@ -50,6 +50,7 @@ app.include_router(rag.router)
 app.include_router(realtime.router)
 app.include_router(ingest.router)
 app.include_router(semantic.router)
+app.include_router(agent.router)
 
 
 @app.get("/")
@@ -71,6 +72,9 @@ def root():
             "/api/semantic/search",
             "/api/semantic/compare",
             "/api/semantic/recommend/{node_id}",
+            "/api/agent/query",
+            "/api/agent/runs",
+            "/api/agent/tools",
             "WS /api/ws",
         ],
     }

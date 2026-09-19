@@ -140,3 +140,51 @@ class RecommendOut(BaseModel):
     node_id: str
     node_name: str
     recommendations: list[SemanticHit] = []
+
+
+class AgentQueryIn(BaseModel):
+    question: str
+    max_steps: int = 6
+
+
+class AgentStep(BaseModel):
+    step: int
+    action: str
+    args: dict = {}
+    observation: str = ""
+
+
+class AgentEvidence(BaseModel):
+    id: str
+    name: str
+    category: str
+    source_url: Optional[str] = None
+
+
+class AgentResult(BaseModel):
+    run_id: int
+    question: str
+    status: str  # completed | no_llm | error
+    llm_used: bool
+    answer: str
+    steps: list[AgentStep] = []
+    evidence: list[AgentEvidence] = []
+
+
+class AgentRunOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    question: str
+    status: str
+    llm_used: bool
+    answer: Optional[str] = None
+    steps_json: str
+    evidence_json: str
+    created_at: datetime
+
+
+class AgentToolInfo(BaseModel):
+    name: str
+    description: str
+    params: dict

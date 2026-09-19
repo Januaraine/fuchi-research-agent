@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -79,3 +79,18 @@ class SemanticIndexMeta(Base):
     num_nodes: Mapped[int] = mapped_column(Integer, default=0)
     idf_json: Mapped[str] = mapped_column(Text)  # {"token": idf, ...}
     built_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AgentRun(Base):
+    """Agent 执行记录：记录一次 Agent 的多步工具调用轨迹与最终结论。"""
+
+    __tablename__ = "agent_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    question: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String)  # completed | no_llm | error
+    llm_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    steps_json: Mapped[str] = mapped_column(Text, default="[]")  # [{"step","action","args","observation"}]
+    evidence_json: Mapped[str] = mapped_column(Text, default="[]")  # [{"id","name","category","source_url"}]
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

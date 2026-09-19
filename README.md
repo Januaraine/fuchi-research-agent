@@ -2,7 +2,7 @@
 
 > 一个以 **OC 世界观为视觉与叙事外壳**、以 **真实世界知识为核心数据** 的未来文明知识观测与交互系统。
 
-本项目当前完成 **Phase 0（项目基础）+ Phase 1（Seed Data）+ Phase 2（知识图谱）+ Phase 3（实时系统）+ Phase 4（真实数据接入）+ Phase 5（语义搜索）+ Phase 6（RAG）**，LLM 采用 OpenAI 兼容接口（可选接入，未配置时优雅降级为仅检索）。
+本项目已完成 **Phase 0 → Phase 7 全部阶段**：项目基础、Seed Data、知识图谱、实时系统、真实数据接入、语义搜索、RAG、AI Agent。LLM 采用 OpenAI 兼容接口（可选接入，未配置时优雅降级）。
 
 ---
 
@@ -21,6 +21,9 @@ SQLite (SQLAlchemy)  ← 119 个真实 AI/ML 知识节点 · 235 条关系（See
         │
         ▼
 LLM（OpenAI 兼容接口，可选）→ RAG grounded answer（带来源引用）
+        │
+        ▼
+AI Agent（Tool Calling：向量检索 / 图遍历 / 来源检索 / RAG）→ 多步知识探索
 ```
 
 - 前端：`frontend/`（Next.js App Router + TypeScript，OC「未来文明观测站」暗色主题）
@@ -28,6 +31,7 @@ LLM（OpenAI 兼容接口，可选）→ RAG grounded answer（带来源引用�
 - 数据：`backend/app/seed_data.py`（真实 AI/ML 知识，来源 Wikipedia / arXiv）
 - 数据接入：`backend/app/ingest/`（Wikipedia 拉取 → 清洗 → 去重 → 实体链接 → 关系抽取 → 幂等写入）
 - RAG / LLM：`backend/app/services/rag_service.py`（检索增强）+ `services/llm.py`（OpenAI 兼容客户端）
+- Agent：`backend/app/services/agent.py`（Tool Calling 多步推理 + 执行轨迹记录）
 
 ## 目录结构
 
@@ -40,9 +44,10 @@ backend/
     seed_data.py       # Seed Data（119 节点 / 235 关系）
     seed.py            # 数据导入（幂等：库非空则跳过）
     ingest/            # 数据接入 pipeline（wikipedia 适配器 + 去重/实体链接 + CLI）
-    routers/           # nodes / graph / search / stats / rag / realtime / ingest / semantic
+    routers/           # nodes / graph / search / stats / rag / realtime / ingest / semantic / agent
     services/rag_service.py   # RAG 查询层（向量检索 + 关键词兜底 + grounded answer）
     services/llm.py           # OpenAI 兼容 LLM 客户端（stdlib urllib，环境变量配置）
+    services/agent.py         # AI Agent（Tool Calling 多步推理 + 轨迹/依据记录）
     services/realtime.py      # WebSocket 连接管理 + 后台事件循环（模拟系统动态）
     services/embedding_service.py  # TF-IDF n-gram 向量化 + 余弦检索 + 相似度推荐
   requirements.txt
@@ -50,6 +55,7 @@ frontend/
   app/                 # page.tsx(Dashboard) · graph/page.tsx · nodes/[id]/page.tsx
   components/          # Navbar · GraphCanvas(力导向图) · NodeCard · RelationList · StatCard
                        # ActivityFeed(实时活动流) · TrendingPanel(实时趋势榜) · SemanticSearch(语义搜索对比)
+                       # AgentExplorer(AI Agent 多步推理 + 执行轨迹)
   lib/                 # api.ts · types.ts · colors.ts · useRealtime.ts(WS 自动重连 hook)
 ```
 
@@ -76,22 +82,26 @@ uvicorn app.main:app --reload --port 8000
 #### 可选：接入 LLM（RAG 生成回答）
 
 不配置也能正常启动，此时 `/api/rag/query` 只返回检索结果（`status=retrieval_ready_no_llm`）。
-配置以下环境变量即可接入任意 OpenAI 兼容服务：
+
+**推荐方式（.env 本地文件，不上传）**：复制根目录 `.env.example` 为 `backend/.env` 并填入真实值：
 
 ```bash
-# DeepSeek（推荐，与 Harness 同源）
-$env:LLM_API_BASE="https://api.deepseek.com"   # Windows PowerShell
-$env:LLM_API_KEY="sk-xxxx"
-$env:LLM_MODEL="deepseek-chat"
-
-# OpenAI
-# LLM_API_BASE=https://api.openai.com/v1   LLM_MODEL=gpt-4o-mini
-
-# 本地 Ollama（key 可留空）
-# LLM_API_BASE=http://localhost:11434/v1   LLM_MODEL=llama3
+cd backend
+cp ../.env.example .env   # 然后编辑 .env，填入 LLM_API_KEY 等
 ```
 
-macOS / Linux 用 `export LLM_API_BASE=...` 代替 `$env:`。
+```bash
+# backend/.env
+LLM_API_BASE=https://api.deepseek.com   # DeepSeek（推荐，与 Harness 同源）
+LLM_API_KEY=sk-你的真实密钥
+LLM_MODEL=deepseek-chat
+# OpenAI：LLM_API_BASE=https://api.openai.com/v1  LLM_MODEL=gpt-4o-mini
+# 本地 Ollama（key 可留空）：LLM_API_BASE=http://localhost:11434/v1  LLM_MODEL=llama3
+```
+
+> `backend/.env` 已被 `.gitignore` 忽略，**绝不提交**；仓库里只保留 `.env.example` 模板。
+
+也可以用环境变量方式（Windows PowerShell：`$env:LLM_API_BASE="..."`；macOS/Linux：`export LLM_API_BASE=...`）。
 
 ### 2. 前端（端口 3000）
 
@@ -127,6 +137,9 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 | GET | `/api/semantic/search?q=&limit=` | 语义检索（向量余弦相似度） |
 | GET | `/api/semantic/recommend/{node_id}` | 语义相似度知识推荐 |
 | GET | `/api/semantic/compare?q=` | 关键词检索 vs 语义检索 对比 |
+| POST | `/api/agent/query` | AI Agent 多步推理（body：`{"question": "...", "max_steps": 6}`；返回答案 + 轨迹 + 依据） |
+| GET | `/api/agent/runs` | 最近的 Agent 执行记录 |
+| GET | `/api/agent/tools` | 列出 Agent 可用工具 |
 | WS | `/api/ws` | 实时事件通道（发送 `ping` 回 `pong` 心跳） |
 
 ## 数据模型
@@ -141,6 +154,8 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 
 `SemanticIndexMeta`：`model · num_nodes · idf_json`（词表 IDF 与索引规模，用于判重/重建）
 
+`AgentRun`：`question · status · llm_used · answer · steps_json · evidence_json · created_at`（Agent 执行轨迹与依据）
+
 分类：`field / paradigm / algorithm / model / architecture / technique / concept / task / dataset / application`
 
 ## 开发阶段进度
@@ -152,7 +167,7 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 - [x] **Phase 4** — Real Data Integration（Wikipedia ingestion pipeline：拉取 → 清洗 → 去重 → 实体链接 → 关系抽取 → 幂等写入 + 运行记录，CLI 与 REST 均可触发）
 - [x] **Phase 5** — Semantic Search（TF-IDF n-gram Embedding 持久化 · 向量余弦检索 · 语义推荐 · 关键词 vs 语义对比）
 - [x] **Phase 6** — RAG（向量检索 + grounded answer · 来源引用 · 无资料明确说明 · LLM 可选接入/优雅降级）
-- [ ] Phase 7 — Agent（Tool Calling / 多步推理）
+- [x] **Phase 7** — Agent（4 工具 Tool Calling · ReAct 多步推理 · 执行轨迹/依据记录 · 无 LLM 时确定性规划兜底）
 
 ## 关于实时系统（Phase 3）
 
@@ -273,3 +288,31 @@ Retrieve Sources（节点 + source_url）
 - **优雅降级**：未配置 LLM 时照常返回检索结果；调用失败返回 `status=error` 且不中断服务。
 
 `status` 取值：`grounded`（已生成）/ `no_context`（无相关资料）/ `retrieval_ready_no_llm`（已检索未生成）/ `error`（LLM 调用失败）。
+
+---
+
+## 关于 AI Agent（Phase 7）
+
+`backend/app/services/agent.py` 实现了可多步调用工具的「知识探索 Agent」：
+
+```text
+User Question
+     ↓
+Agent 决策下一步（LLM ReAct 或 确定性规划兜底）
+     ↓
+调用工具（4 个）：vector_search / graph_search / source_retrieve / rag_answer
+     ↓
+整合多步结果 → 最终答案 + 依据（evidence）+ 执行轨迹（steps）
+     ↓
+持久化 agent_runs（记录执行过程）
+```
+
+- **4 个工具**：向量检索、图遍历、来源检索、RAG 问答（`GET /api/agent/tools` 可查看）。
+- **多步 Tool Calling**：LLM 已配置时走 ReAct 循环，每步输出 JSON `{"action": "...", "args": {...}}` 选工具，或 `{"action": "final", ...}` 结束；最多 `max_steps` 步。
+- **按问题选工具**：Agent 依据问题与历史观察决定下一步，而非固定流程。
+- **无 LLM 兜底**：未配置 LLM 时走确定性规划（按「关系 / 来源」等意图选择图遍历或来源检索），保证无 key 也能演示多步探索。
+- **可追溯**：返回 `steps`（每步的工具、参数、观察摘要）与 `evidence`（依据节点 + `source_url`），并写入 `agent_runs` 表（`GET /api/agent/runs`）。
+
+前端 Dashboard「AI Agent」区块展示答案、依据节点与分步执行轨迹。
+
+> 至此，项目 Plan 中的 Phase 0–7 已全部完成：真实世界知识（数据）→ Knowledge Graph（结构）→ 检索/语义搜索（查找）→ RAG（检索增强问答）→ Agent（工具化多步推理），LLM 全程通过环境变量可选接入。

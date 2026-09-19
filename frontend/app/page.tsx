@@ -10,6 +10,7 @@ import StatCard from "@/components/StatCard";
 import ActivityFeed from "@/components/ActivityFeed";
 import TrendingPanel from "@/components/TrendingPanel";
 import SemanticSearch from "@/components/SemanticSearch";
+import AgentExplorer from "@/components/AgentExplorer";
 import type { NodeSummary, RagResult, Stats } from "@/lib/types";
 
 export default function Dashboard() {
@@ -220,6 +221,16 @@ export default function Dashboard() {
           </span>
         </h2>
         <SemanticSearch />
+      </section>
+
+      <section className="section">
+        <h2>
+          <span className="id">06</span>AI Agent{" "}
+          <span className="muted" style={{ fontSize: 12, fontFamily: "var(--mono)" }}>
+            （Tool Calling · 多步推理）
+          </span>
+        </h2>
+        <AgentExplorer />
       </section>
     </div>
   );

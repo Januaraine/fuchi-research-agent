@@ -543,6 +543,52 @@ h3 {
   color: var(--jade);
 }
 
+/* agent trace */
+.agent-trace {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-step {
+  display: grid;
+  grid-template-columns: 20px 86px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev-2);
+}
+
+.agent-step-idx {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--cinnabar);
+}
+
+.agent-step-action {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--jade);
+}
+
+.agent-step-args {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-step-obs {
+  grid-column: 2 / 4;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 @media (max-width: 860px) {
   .graph-layout {
     grid-template-columns: 1fr;

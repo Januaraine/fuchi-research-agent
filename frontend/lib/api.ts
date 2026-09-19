@@ -1,4 +1,5 @@
 import type {
+  AgentResult,
   GraphData,
   NodeDetail,
   NodeSummary,
@@ -71,4 +72,10 @@ export const api = {
       `/api/semantic/recommend/${encodeURIComponent(id)}${limit ? `?limit=${limit}` : ""}`
     ),
   buildEmbeddings: () => post<SemanticBuildOut>("/api/semantic/build", {}),
+  agentQuery: (question: string, maxSteps?: number) =>
+    post<AgentResult>("/api/agent/query", {
+      question,
+      ...(maxSteps ? { max_steps: maxSteps } : {}),
+    }),
+  agentTools: () => get<{ name: string; description: string; params: Record<string, string> }[]>("/api/agent/tools"),
 };

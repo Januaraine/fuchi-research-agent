@@ -108,3 +108,27 @@ export interface RecommendOut {
   node_name: string;
   recommendations: SemanticHit[];
 }
+
+export interface AgentStep {
+  step: number;
+  action: string;
+  args: Record<string, any>;
+  observation: string;
+}
+
+export interface AgentEvidence {
+  id: string;
+  name: string;
+  category: string;
+  source_url: string | null;
+}
+
+export interface AgentResult {
+  run_id: number;
+  question: string;
+  status: string;
+  llm_used: boolean;
+  answer: string;
+  steps: AgentStep[];
+  evidence: AgentEvidence[];
+}
