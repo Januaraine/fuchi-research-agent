@@ -5,7 +5,10 @@
 本项目已完成 **Phase 0 → Phase 7 全部阶段**：项目基础、Seed Data、知识图谱、实时系统、真实数据接入、语义搜索、RAG、AI Agent。LLM 采用 OpenAI 兼容接口（可选接入，未配置时优雅降级）。
 
 ---
+<img width="2560" height="1398" alt="image" src="https://github.com/user-attachments/assets/d22598f6-5698-4d8c-83f2-7bf270c114d6" />
+<img width="2560" height="1398" alt="image" src="https://github.com/user-attachments/assets/9bdd0983-3f83-4287-a0a9-8f157ee88599" />
 
+---
 ## 架构
 
 ```text
